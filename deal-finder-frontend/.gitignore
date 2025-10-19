@@ -1,0 +1,4 @@
+
+# Custom additions
+.env
+*.orig
