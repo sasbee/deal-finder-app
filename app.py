@@ -1,3 +1,5 @@
+Python 3.11.9 (tags/v3.11.9:de54cf5, Apr  2 2024, 10:12:12) [MSC v.1938 64 bit (AMD64)] on win32
+Type "help", "copyright", "credits" or "license()" for more information.
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import requests
@@ -124,43 +126,42 @@ def get_mock_deals(requirement):
             "description": f"Top-rated {requirement} with advanced features",
             "availability": "Limited Stock",
             "rating": 4.8,
-            "originalPrice": 179.99
-        }
-    ]
-
-@app.route('/api/search-deals', methods=['POST'])
-def search_deals():
-    """Endpoint to search for deals"""
-    try:
-        data = request.get_json()
-        requirement = data.get('requirement', '').strip()
-        
-        if not requirement:
-            return jsonify({'error': 'Requirement is required'}), 400
-        
-        # Search for deals
-        deals = search_deals_with_perplexity(requirement)
-        
-        return jsonify({
-            'success': True,
-            'requirement': requirement,
-            'deals': deals,
-            'timestamp': datetime.now().isoformat()
-        })
-        
-    except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'timestamp': datetime.now().isoformat()
-    })
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+...             "originalPrice": 179.99
+...         }
+...     ]
+... 
+... @app.route('/api/search-deals', methods=['POST'])
+... def search_deals():
+...     """Endpoint to search for deals"""
+...     try:
+...         data = request.get_json()
+...         requirement = data.get('requirement', '').strip()
+...         
+...         if not requirement:
+...             return jsonify({'error': 'Requirement is required'}), 400
+...         
+...         # Search for deals
+...         deals = search_deals_with_perplexity(requirement)
+...         
+...         return jsonify({
+...             'success': True,
+...             'requirement': requirement,
+...             'deals': deals,
+...             'timestamp': datetime.now().isoformat()
+...         })
+...         
+...     except Exception as e:
+...         return jsonify({
+...             'success': False,
+...             'error': str(e)
+...         }), 500
+... 
+... @app.route('/api/health', methods=['GET'])
+... def health_check():
+...     """Health check endpoint"""
+...     return jsonify({
+...         'status': 'healthy',
+...         'timestamp': datetime.now().isoformat()
+...     })
+... 
+... if __name__ == '__main__':
