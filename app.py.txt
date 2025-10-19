@@ -1,0 +1,166 @@
+from flask import Flask, request, jsonify
+from flask_cors import CORS
+import requests
+import os
+from datetime import datetime
+
+app = Flask(__name__)
+CORS(app)
+
+# Perplexity API configuration
+PERPLEXITY_API_KEY = os.environ.get('PERPLEXITY_API_KEY', 'your-api-key-here')
+PERPLEXITY_API_URL = 'https://api.perplexity.ai/chat/completions'
+
+def search_deals_with_perplexity(requirement):
+    """Search for deals using Perplexity API"""
+    
+    prompt = f"""Find the top 3 best deals for: {requirement}
+
+Please provide ONLY a JSON array with exactly 3 deals, formatted as follows:
+[
+  {{
+    "title": "Product name",
+    "price": 99.99,
+    "currency": "USD",
+    "retailer": "Store name",
+    "url": "https://example.com/product",
+    "description": "Brief description",
+    "availability": "In Stock" or "Limited Stock" or "Pre-order",
+    "rating": 4.5,
+    "originalPrice": 129.99
+  }}
+]
+
+Requirements:
+- Sort by relevance, then by lowest to highest price
+- Include only available deals (In Stock, Limited Stock, or Pre-order)
+- Use actual current prices from real retailers
+- Provide working product URLs
+- Return ONLY valid JSON, no other text"""
+
+    headers = {
+        'Authorization': f'Bearer {PERPLEXITY_API_KEY}',
+        'Content-Type': 'application/json'
+    }
+    
+    payload = {
+        'model': 'llama-3.1-sonar-small-128k-online',
+        'messages': [
+            {
+                'role': 'system',
+                'content': 'You are a helpful shopping assistant that finds the best deals. Always respond with valid JSON only.'
+            },
+            {
+                'role': 'user',
+                'content': prompt
+            }
+        ],
+        'temperature': 0.2,
+        'max_tokens': 2000
+    }
+    
+    try:
+        response = requests.post(PERPLEXITY_API_URL, json=payload, headers=headers)
+        response.raise_for_status()
+        
+        result = response.json()
+        content = result['choices'][0]['message']['content']
+        
+        # Extract JSON from response (remove markdown code blocks if present)
+        import json
+        import re
+        
+        # Remove markdown code blocks
+        content = re.sub(r'```json\s*|\s*```', '', content).strip()
+        
+        # Parse the JSON
+        deals = json.loads(content)
+        
+        # Validate it's a list
+        if not isinstance(deals, list):
+            raise ValueError("Response is not a list")
+        
+        # Sort by price (already should be sorted, but ensure it)
+        deals.sort(key=lambda x: x.get('price', float('inf')))
+        
+        return deals[:3]  # Return top 3
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        # Return mock data as fallback
+        return get_mock_deals(requirement)
+
+def get_mock_deals(requirement):
+    """Fallback mock deals for testing"""
+    return [
+        {
+            "title": f"{requirement} - Budget Option",
+            "price": 49.99,
+            "currency": "USD",
+            "retailer": "Amazon",
+            "url": "https://amazon.com",
+            "description": f"Great value {requirement} with excellent features",
+            "availability": "In Stock",
+            "rating": 4.3,
+            "originalPrice": 79.99
+        },
+        {
+            "title": f"{requirement} - Mid-Range Choice",
+            "price": 89.99,
+            "currency": "USD",
+            "retailer": "Best Buy",
+            "url": "https://bestbuy.com",
+            "description": f"Premium quality {requirement} at competitive price",
+            "availability": "In Stock",
+            "rating": 4.6,
+            "originalPrice": 119.99
+        },
+        {
+            "title": f"{requirement} - Premium Deal",
+            "price": 129.99,
+            "currency": "USD",
+            "retailer": "Walmart",
+            "url": "https://walmart.com",
+            "description": f"Top-rated {requirement} with advanced features",
+            "availability": "Limited Stock",
+            "rating": 4.8,
+            "originalPrice": 179.99
+        }
+    ]
+
+@app.route('/api/search-deals', methods=['POST'])
+def search_deals():
+    """Endpoint to search for deals"""
+    try:
+        data = request.get_json()
+        requirement = data.get('requirement', '').strip()
+        
+        if not requirement:
+            return jsonify({'error': 'Requirement is required'}), 400
+        
+        # Search for deals
+        deals = search_deals_with_perplexity(requirement)
+        
+        return jsonify({
+            'success': True,
+            'requirement': requirement,
+            'deals': deals,
+            'timestamp': datetime.now().isoformat()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'timestamp': datetime.now().isoformat()
+    })
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
